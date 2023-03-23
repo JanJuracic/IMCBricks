@@ -41,3 +41,18 @@ TagManager:
   - name: Default
     uniqueID: 0
     locked: 0
+  - name: Background
+    uniqueID: 4287767213
+    locked: 0
+  - name: Mortar
+    uniqueID: 2926376503
+    locked: 0
+  - name: Bricks
+    uniqueID: 2032151969
+    locked: 0
+  - name: Finish
+    uniqueID: 2974695917
+    locked: 0
+  - name: Foreground
+    uniqueID: 2026295453
+    locked: 0

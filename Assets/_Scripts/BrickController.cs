@@ -10,8 +10,8 @@ public class BrickController : MonoBehaviour
 
     [SerializeField] private GridSlot LeftSlot;
     [SerializeField] private GridSlot RightSlot;
-    [SerializeField] public BrickType brickType;    
-    [SerializeField] private List<Sprite> possibleSprites;
+    [SerializeField] private List<BrickType> possiblebrickTypes;
+    [SerializeField] public BrickType brickType;
     [SerializeField] private SpriteRenderer spriteRenderer;
 
     [SerializeField] private bool interactable = true;
@@ -25,12 +25,8 @@ public class BrickController : MonoBehaviour
     {
         boxCollider = GetComponent<BoxCollider2D>();
         SpriteTransform = spriteRenderer.transform;
-    }
-
-    private void Start()
-    {
-        brickType = (BrickType)UnityEngine.Random.Range(0, 2);
-        spriteRenderer.sprite = possibleSprites[(int)brickType];
+        brickType = possiblebrickTypes[UnityEngine.Random.Range(0, possiblebrickTypes.Count)];
+        spriteRenderer.sprite = brickType.GetNextSprite();
     }
 
     private void OnMouseDown()
@@ -167,10 +163,4 @@ public class BrickController : MonoBehaviour
         List<GridSlot> allAdjacent = leftAdjacentSlots.Union(rightAdjacentSlots).ToList();
         return allAdjacent;
     }
-}
-
-public enum BrickType
-{
-    Red,
-    Yellow
 }
