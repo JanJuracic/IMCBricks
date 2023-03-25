@@ -4,14 +4,14 @@ using UnityEngine;
 
 public class GridSlot : MonoBehaviour
 {
-    [SerializeField] private GridManager myGridManager;
+    [SerializeField] private GameManager myGridManager;
 
     [field: SerializeField] public int currentRow { get; private set; }
     [field: SerializeField] public int currentCol { get; private set; }
 
     [field: SerializeField] public BrickController MyController { get; private set; }
 
-    public void Setup(GridManager grid, int row, int col)
+    public void Setup(GameManager grid, int row, int col)
     {
         myGridManager = grid;
         UpdateGridPos(row, col);

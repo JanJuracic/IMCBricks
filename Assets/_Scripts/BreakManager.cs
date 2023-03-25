@@ -5,10 +5,11 @@ using UnityEngine;
 
 public class BreakManager : MonoBehaviour
 {
-
     [SerializeField] private LineRenderer lineRenderer;
-
     [SerializeField] private List<BrickController> bricksToDestroy =new();
+
+    [SerializeField] private Vector3 startPos;
+    [SerializeField] private Vector3 endPos;
 
     private void Awake()
     {
@@ -27,7 +28,7 @@ public class BreakManager : MonoBehaviour
 
     private void Update()
     {
-        if (Input.GetKeyDown(KeyCode.Return))
+        if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space))
         {
             RemoveSelectedBricks();
         }
@@ -37,13 +38,27 @@ public class BreakManager : MonoBehaviour
             DeselectBricks();
         }
 
+        if (Input.GetMouseButtonDown(1))
+        {
+            DeselectLastBrick();
+        }
+
         //FXs
         lineRenderer.positionCount = bricksToDestroy.Count;
         for (int i = 0; i < bricksToDestroy.Count; i++)
         {
-            lineRenderer.SetPosition(i, bricksToDestroy[i].SpriteTransform.position);
+            lineRenderer.SetPosition(i, bricksToDestroy[i].GetFaceTransformPos());
         }
 
+    }
+
+    private void DeselectLastBrick()
+    {
+        if (bricksToDestroy.Count > 0)
+        {
+            bricksToDestroy.Last().HandleDeselected();
+            bricksToDestroy.Remove(bricksToDestroy.Last());
+        }
     }
 
     private void DeselectBricks()
@@ -64,18 +79,22 @@ public class BreakManager : MonoBehaviour
         lineRenderer.positionCount = 0;
     }
 
-    public IEnumerator Co_SequentialRemoveBrick()
+    private IEnumerator Co_SequentialRemoveBrick()
     {
+        float delay = 0.20f;
+
         while (bricksToDestroy.Count > 0)
         {
-            var brick = bricksToDestroy.Last();
+            var brick = bricksToDestroy[0];
             brick.RemoveBrick();
             bricksToDestroy.Remove(brick);
 
-            yield return new WaitForSeconds(0.15f);
+            yield return new WaitForSeconds(delay);
+
+            delay = Mathf.Lerp(delay, 0.07f, 0.15f);
         }
 
-        GridManager.instance.Fall();
+        GameManager.instance.Fall();
     }
 
     private void HandleBrickClicked(BrickController brick)
@@ -85,43 +104,49 @@ public class BreakManager : MonoBehaviour
         if (bricksToDestroy.Count == 0)
         {
             AddBrickToEnd();
+            return;
         }
 
-        foreach (GridSlot slot in bricksToDestroy.Last().GetAdjacentSlots())
+        var lastBrick = bricksToDestroy.Last();
+        endPos = brick.GetCenterPos();
+        startPos = lastBrick.GetCenterPos();
+
+        RaycastHit2D[] hits = Physics2D.RaycastAll(startPos, (endPos - startPos), (endPos - startPos).magnitude);
+        List<BrickController> hitBricks = new();
+        for (int i = 0; i < hits.Length; i++)
         {
-            if (slot.MyController == brick)
+            var hitBrick = hits[i].collider.gameObject.GetComponent<BrickController>();
+
+            if (hitBrick != null)
             {
-                if (bricksToDestroy.Last().brickType == brick.brickType)
-                {
-                    AddBrickToFront();
-                    return;
-                }
+                hitBricks.Add(hitBrick);
             }
         }
 
-        foreach (GridSlot slot in bricksToDestroy[0].GetAdjacentSlots())
-        {
-            if (slot.MyController == brick)
-            {
-                if (bricksToDestroy[0].brickType == brick.brickType)
-                {
-                    AddBrickToFront();
-                    return;
-                }
-            }
-        }
+        //Remove bricks that are last brick
+        hitBricks = hitBricks
+            .Where(b => b != lastBrick)
+            .ToList();
 
-        void AddBrickToFront()
+        //Check if the nearest hit brick is the correct type
+        if (hitBricks[0] == brick && hitBricks[0].MyBrickType == lastBrick.MyBrickType)
         {
-            bricksToDestroy.Insert(0, brick);
-            brick.HandleSelected();
+            AddBrickToEnd();
         }
 
         void AddBrickToEnd()
         {
-            bricksToDestroy.Add(brick);
-            brick.HandleSelected();
+            if (bricksToDestroy.Contains(brick) == false)
+            {
+                bricksToDestroy.Add(brick);
+                brick.HandleSelected();
+            }
         }
+    }
+
+    private void OnDrawGizmos()
+    {
+        Gizmos.DrawRay(startPos, endPos - startPos);
     }
 
 }

@@ -11,22 +11,22 @@ public class BrickController : MonoBehaviour
     [SerializeField] private GridSlot LeftSlot;
     [SerializeField] private GridSlot RightSlot;
     [SerializeField] private List<BrickType> possiblebrickTypes;
-    [SerializeField] public BrickType brickType;
-    [SerializeField] private SpriteRenderer spriteRenderer;
+    [SerializeField] public BrickType MyBrickType;
+
+    [SerializeField] private SpriteRenderer faceRenderer;
+    [SerializeField] private SpriteRenderer mortarRenderer;
+    [SerializeField] private ParticleSystem particles;
 
     [SerializeField] private bool interactable = true;
     [SerializeField] private bool selected = false;
     
     private BoxCollider2D boxCollider;
 
-    [field: SerializeField] public Transform SpriteTransform { get; private set; }
-
     private void Awake()
     {
         boxCollider = GetComponent<BoxCollider2D>();
-        SpriteTransform = spriteRenderer.transform;
-        brickType = possiblebrickTypes[UnityEngine.Random.Range(0, possiblebrickTypes.Count)];
-        spriteRenderer.sprite = brickType.GetNextSprite();
+        MyBrickType = possiblebrickTypes[UnityEngine.Random.Range(0, possiblebrickTypes.Count)];
+        faceRenderer.sprite = MyBrickType.GetNextSprite();
     }
 
     private void OnMouseDown()
@@ -52,11 +52,22 @@ public class BrickController : MonoBehaviour
         return mySlots;
     }
 
+    public Vector3 GetCenterPos()
+    {
+        return transform.position + new Vector3(0.5f, 0);
+    }
+
+    public Vector3 GetFaceTransformPos()
+    {
+        return faceRenderer.transform.position;
+    }
+
     public void RemoveBrick()
     {
         selected = false;
         LeftSlot.RemoveFromGrid();
         RightSlot.RemoveFromGrid();
+        GameManager.instance.RemoveBrickFromGameList(this);
         StartCoroutine(Co_RemoveBrickFX());
     }
 
@@ -78,16 +89,16 @@ public class BrickController : MonoBehaviour
 
     public IEnumerator Co_SelectedFx()
     {
-        var originalLocalPos = SpriteTransform.localPosition;
+        var originalLocalPos = faceRenderer.transform.localPosition;
 
         while (selected)
         {
-            SpriteTransform.localPosition = Wobble(originalLocalPos);
+            faceRenderer.transform.localPosition = Wobble(originalLocalPos);
 
             yield return null;
         }
 
-        SpriteTransform.localPosition = originalLocalPos;
+        faceRenderer.transform.localPosition = originalLocalPos;
 
         Vector3 Wobble(Vector3 pos)
         {
@@ -103,21 +114,31 @@ public class BrickController : MonoBehaviour
 
     public IEnumerator Co_RemoveBrickFX()
     {
-        Vector3 gravity = Vector3.down * 0.005f;
+        //Disable mortar
+        mortarRenderer.enabled = false;
 
+        //Particles
+        particles.Play();
+
+        //Draw order
+        faceRenderer.sortingLayerName = "Foreground";
+        faceRenderer.sortingOrder = UnityEngine.Random.Range(3, 10);
+
+        //Physics 
         float startX = UnityEngine.Random.Range(-1f, 1f);
         float startY = UnityEngine.Random.Range(1.2f, 2f);
         Vector3 vel = new Vector3(startX, startY) * 0.1f;
 
+        Vector3 gravity = Vector3.down * 0.005f;
         float rotation = UnityEngine.Random.Range(-2.8f, 2.8f);
 
         while (true)
         {
             vel += gravity;
-            SpriteTransform.localPosition += vel;
-            SpriteTransform.eulerAngles += new Vector3(0, 0, rotation);
+            faceRenderer.transform.localPosition += vel;
+            faceRenderer.transform.eulerAngles += new Vector3(0, 0, rotation);
 
-            if (SpriteTransform.position.y < -20) break;
+            if (faceRenderer.transform.position.y < -20) break;
 
             yield return null;
         }
@@ -125,34 +146,75 @@ public class BrickController : MonoBehaviour
         Destroy(gameObject);
     }
 
-    public void FallFx()
+    public void Fall()
     {
-        StartCoroutine(Co_FallFx());
+        Vector3 targetPosition = new Vector3(LeftSlot.currentCol, LeftSlot.currentRow) + GameManager.instance.transform.position;
+        if (targetPosition == transform.position) return;
+
+        StartCoroutine(Co_FallFx(targetPosition));
     }
 
-    private IEnumerator Co_FallFx()
+    private IEnumerator Co_FallFx(Vector3 targetPos)
     {
         interactable = false;
 
-        Vector3 targetPosition = new Vector3(LeftSlot.currentCol, LeftSlot.currentRow) + GridManager.instance.transform.position;
+        Transform faceTransform = faceRenderer.transform;
+        Vector3 originalLocalPos = faceTransform.localPosition;
+        Vector3 targetFacePos = new Vector3(faceTransform.position.x, targetPos.y, 0);
 
+        //Turn off mortar
+        mortarRenderer.enabled = false;
+
+        //Physics 
+        Vector3 gravity = Vector3.down * 0.005f;
+        Vector3 vel = Vector3.zero;
+
+        //Falling
         while (true)
         {
-            transform.position = Vector3.Lerp(transform.position, targetPosition, 0.05f);
+            vel += gravity;
+            faceTransform.position += vel;
 
-            if ((transform.position - targetPosition).magnitude < 0.05f)
+            if (faceTransform.position.y < targetFacePos.y)
             {
-                transform.position = targetPosition;
+                transform.position = targetPos;
+                faceTransform.localPosition = originalLocalPos;
+                mortarRenderer.enabled = true;
                 break;
             }
+            yield return null;
+        }
 
+        //Shaking
+        float wobbleTime = 0.1f;
+        while (true)
+        {
+            faceTransform.localPosition += Wobble();
+            wobbleTime += -Time.deltaTime;
+
+            if (wobbleTime < 0f)
+            {
+                faceTransform.localPosition = originalLocalPos;
+                break;
+            }
             yield return null;
         }
 
         interactable = true;
+
+        Vector3 Wobble()
+        {
+            float time = Time.time + UnityEngine.Random.Range(0f, 40f);
+            float speed = 0.5f;
+            float amount = 0.02f;
+
+            Vector3 addedWobble = new Vector3(Mathf.Sin(time * speed) * amount, Mathf.Cos(time * speed) * amount);
+
+            return addedWobble;
+        }
     }
 
-    public List<GridSlot> GetAdjacentSlots()
+    private List<GridSlot> GetAdjacentSlots()
     {
         var leftAdjacentSlots = LeftSlot.GetAdjacentSlots();
         var rightAdjacentSlots = RightSlot.GetAdjacentSlots();
@@ -163,4 +225,5 @@ public class BrickController : MonoBehaviour
         List<GridSlot> allAdjacent = leftAdjacentSlots.Union(rightAdjacentSlots).ToList();
         return allAdjacent;
     }
+
 }
