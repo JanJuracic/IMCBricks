@@ -126,7 +126,7 @@ public class GameManager : MonoBehaviour
         }
 
         //Check if game complete
-        if (bricksInGame.Count / startingNumOfBricks <= percentForCompletion)
+        if ((float)bricksInGame.Count / (float)startingNumOfBricks <= percentForCompletion)
         {
             FinishLevel();
         }

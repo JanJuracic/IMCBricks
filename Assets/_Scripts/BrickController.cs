@@ -16,6 +16,7 @@ public class BrickController : MonoBehaviour
     [SerializeField] private SpriteRenderer faceRenderer;
     [SerializeField] private SpriteRenderer mortarRenderer;
     [SerializeField] private ParticleSystem particles;
+    [SerializeField] private AudioSource audio;
 
     [SerializeField] private bool interactable = true;
     [SerializeField] private bool selected = false;
@@ -27,6 +28,7 @@ public class BrickController : MonoBehaviour
         boxCollider = GetComponent<BoxCollider2D>();
         MyBrickType = possiblebrickTypes[UnityEngine.Random.Range(0, possiblebrickTypes.Count)];
         faceRenderer.sprite = MyBrickType.GetNextSprite();
+        audio = GetComponent<AudioSource>();
     }
 
     private void OnMouseDown()
@@ -86,7 +88,6 @@ public class BrickController : MonoBehaviour
         selected = false;
     }
 
-
     public IEnumerator Co_SelectedFx()
     {
         var originalLocalPos = faceRenderer.transform.localPosition;
@@ -115,10 +116,14 @@ public class BrickController : MonoBehaviour
     public IEnumerator Co_RemoveBrickFX()
     {
         //Disable mortar
+        mortarRenderer.forceRenderingOff = true;
         mortarRenderer.enabled = false;
 
         //Particles
         particles.Play();
+
+        //Sound
+        audio.Play();
 
         //Draw order
         faceRenderer.sortingLayerName = "Foreground";

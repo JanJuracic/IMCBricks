@@ -28,6 +28,16 @@ public class BillboardController : MonoBehaviour
         {
             GameManager.instance.EndLevel();
         }
+        
+
+        if (ready) Application.OpenURL("https://www.imc-agencija.hr/");
+    }
+
+    [SerializeField] private bool ready = false;
+
+    public void GetReadyToLinkToWebsite()
+    {
+        ready = true;
     }
 
     //[ContextMenu("Rise")]

@@ -6,6 +6,7 @@ using UnityEngine;
 public class BreakManager : MonoBehaviour
 {
     [SerializeField] private LineRenderer lineRenderer;
+    [SerializeField] private AudioSource ping;
     [SerializeField] private List<BrickController> bricksToDestroy =new();
 
     [SerializeField] private Vector3 startPos;
@@ -14,6 +15,7 @@ public class BreakManager : MonoBehaviour
     private void Awake()
     {
         lineRenderer = GetComponent<LineRenderer>();
+        ping = GetComponent<AudioSource>();
     }
 
     private void OnEnable()
@@ -141,6 +143,7 @@ public class BreakManager : MonoBehaviour
                 bricksToDestroy.Add(brick);
                 brick.HandleSelected();
             }
+            ping.Play();
         }
     }
 
